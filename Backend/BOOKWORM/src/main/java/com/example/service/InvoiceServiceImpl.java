@@ -56,9 +56,7 @@ public class InvoiceServiceImpl implements IInvoiceService {
     @Autowired
     private CustomerRepository customerRepository;
 
-    // ===============================
-    // Invoice Preview (P + R + L)
-    // ===============================
+    
     @Override
     public InvoicePreviewResponseDTO previewInvoice(Integer userId) {
 
@@ -86,7 +84,7 @@ public class InvoiceServiceImpl implements IInvoiceService {
             dto.setProductName(product.getProductName());
             dto.setTranType(item.getTranType());
 
-            // ===== RENT =====
+            
             if (item.getTranType() == 'R') {
 
                 BigDecimal perDay = product.getRentPerDay();
@@ -100,9 +98,9 @@ public class InvoiceServiceImpl implements IInvoiceService {
 
                 subTotal = subTotal.add(total);
             }
-            // ===== LIBRARY (MEMBERSHIP) =====
+           
             else if (item.getTranType() == 'L') {
-                // Fetch active subscription to get package price for per-book cost
+                
                 UserLibrarySubscription sub = shelfRepository.findSubscriptionByUserId(userId);
                 BigDecimal perBookValue = BigDecimal.ZERO;
 
@@ -122,7 +120,7 @@ public class InvoiceServiceImpl implements IInvoiceService {
 
                 subTotal = subTotal.add(perBookValue);
             }
-            // ===== PURCHASE =====
+            
             else {
                 BigDecimal price = getEffectivePrice(product);
                 BigDecimal total = price.multiply(BigDecimal.valueOf(item.getQuantity()));
@@ -138,8 +136,8 @@ public class InvoiceServiceImpl implements IInvoiceService {
             previewItems.add(dto);
         }
 
-        // ===== TAX (can change later) =====
-        BigDecimal tax = BigDecimal.ZERO; // or 0.18 * subtotal if GST
+        
+        BigDecimal tax = BigDecimal.ZERO; 
         BigDecimal grandTotal = subTotal.add(tax);
 
         InvoicePreviewResponseDTO response = new InvoicePreviewResponseDTO();
@@ -151,9 +149,7 @@ public class InvoiceServiceImpl implements IInvoiceService {
         return response;
     }
 
-    // ===============================
-    // Generate Invoice (P + R + L)
-    // ===============================
+   
     @Override
     @Transactional
     public InvoiceResponseDTO generateInvoice(Integer userId) {
@@ -167,7 +163,6 @@ public class InvoiceServiceImpl implements IInvoiceService {
         LocalDate today = LocalDate.now();
         BigDecimal totalAmount = BigDecimal.ZERO;
 
-        // -------- INVOICE HEADER --------
         Invoice invoice = new Invoice();
         invoice.setUserId(userId);
         invoice.setInvoiceDate(today);
@@ -176,10 +171,10 @@ public class InvoiceServiceImpl implements IInvoiceService {
 
         List<InvoiceDetail> invoiceDetails = new ArrayList<>();
 
-        // -------- PROCESS ITEMS --------
+       
         for (Cart item : cartItems) {
 
-            // Duplicate Check & Upgrade Logic
+           
             List<MyShelf> existing = shelfRepository.findByUserIdAndProductProductId(userId,
                     item.getProduct().getProductId());
             boolean alreadyPurchased = existing.stream().anyMatch(s -> s.getTranType() == 'P');
@@ -187,23 +182,22 @@ public class InvoiceServiceImpl implements IInvoiceService {
                     .anyMatch(s -> (s.getTranType() == 'R' || s.getTranType() == 'L') &&
                             s.getProductExpiryDate() != null && !s.getProductExpiryDate().isBefore(today));
 
-            // Case 1: Trying to Purchase (P)
+            
             if (item.getTranType() == 'P') {
                 if (alreadyPurchased) {
                     throw new RuntimeException(
                             "Product '" + item.getProduct().getProductName() + "' is already purchased.");
                 }
-                // Allow upgrade: If currently rented/library, remove the old entry so it can be
-                // replaced by Purchase
+                
                 if (activeRentOrLib) {
-                    // Find and delete the rented/library entry to "upgrade" it
+                    
                     List<MyShelf> toRemove = existing.stream()
                             .filter(s -> (s.getTranType() == 'R' || s.getTranType() == 'L'))
                             .toList();
                     shelfRepository.deleteAll(toRemove);
                 }
             }
-            // Case 2: Trying to Rent (R) or Library (L)
+            
             else {
                 if (alreadyPurchased || activeRentOrLib) {
                     throw new RuntimeException(
@@ -221,22 +215,22 @@ public class InvoiceServiceImpl implements IInvoiceService {
                             ? product.getProductName()
                             : product.getProductEnglishName());
 
-            // ===== RENT =====
+            
             if (item.getTranType() == 'R') {
 
                 BigDecimal perDay = product.getRentPerDay();
                 int days = item.getRentDays();
                 BigDecimal total = perDay.multiply(BigDecimal.valueOf(days));
 
-                detail.setTranType(item.getTranType()); // 'R'
+                detail.setTranType(item.getTranType()); 
                 detail.setQuantity(1);
-                detail.setBasePrice(perDay); // per day rent
-                detail.setSalePrice(total); // total rent
+                detail.setBasePrice(perDay); 
+                detail.setSalePrice(total); 
                 detail.setRentNoOfDays(days);
 
                 totalAmount = totalAmount.add(total);
 
-                // Shelf expiry = today + rent days
+                
                 MyShelf shelf = new MyShelf();
                 shelf.setUserId(item.getCustomer().getUserId());
                 shelf.setProduct(product);
@@ -245,17 +239,17 @@ public class InvoiceServiceImpl implements IInvoiceService {
 
                 shelfRepository.save(shelf);
 
-                // ✅ Generate Royalty for Rent
+                
                 royaltyTransactionService.generateRoyalty(item.getCustomer().getUserId(), product, 'R', total, perDay,
                         1, days, invoice);
             }
-            // ===== LIBRARY (MEMBERSHIP) =====
+           
             else if (item.getTranType() == 'L') {
-                // Delegate to ShelfService to check subscription limits and add to library
+                
                 shelfService.lendFromSubscription(item.getCustomer().getUserId(),
                         product.getProductId(), invoice);
 
-                // Fetch the subscription to calculate per-book value for invoice visibility
+                
                 UserLibrarySubscription sub = shelfRepository.findSubscriptionByUserId(userId);
                 BigDecimal perBookValue = BigDecimal.ZERO;
 
@@ -276,7 +270,7 @@ public class InvoiceServiceImpl implements IInvoiceService {
 
                 totalAmount = totalAmount.add(perBookValue);
             }
-            // ===== PURCHASE =====
+            
             else {
 
                 BigDecimal price = getEffectivePrice(product);
@@ -297,7 +291,7 @@ public class InvoiceServiceImpl implements IInvoiceService {
                 shelf.setTranType('P');
                 shelfRepository.save(shelf);
 
-                // ✅ Generate Royalty for Purchase
+                
                 royaltyTransactionService.generateRoyalty(item.getCustomer().getUserId(), product, 'P', saleTotal,
                         price,
                         item.getQuantity(), 0, invoice);
@@ -307,13 +301,13 @@ public class InvoiceServiceImpl implements IInvoiceService {
             invoiceDetails.add(detail);
         }
 
-        // -------- FINALIZE --------
+        
         invoice.setInvoiceAmount(totalAmount);
         invoiceRepository.save(invoice);
 
         byte[] pdfBytes = invoicePdfService.generateInvoicePdf(invoice, invoiceDetails);
 
-        // Send Email with Invoice PDF
+       
         try {
             Customer customer = customerRepository.findById(userId).orElse(null);
             if (customer != null) {
@@ -332,9 +326,7 @@ public class InvoiceServiceImpl implements IInvoiceService {
         return response;
     }
 
-    // ===============================
-    // Fetch Invoices
-    // ===============================
+   
     @Override
     public List<Invoice> getInvoicesByCustomer(Integer userId) {
         return invoiceRepository.findByUserId(userId);
@@ -346,9 +338,7 @@ public class InvoiceServiceImpl implements IInvoiceService {
                 .orElseThrow(() -> new RuntimeException("Invoice not found"));
     }
 
-    // ===============================
-    // Effective Price Helper
-    // ===============================
+  
     private BigDecimal getEffectivePrice(Product product) {
 
         LocalDate today = LocalDate.now();
