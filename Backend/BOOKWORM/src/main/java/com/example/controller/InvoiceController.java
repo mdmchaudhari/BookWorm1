@@ -35,32 +35,32 @@ public class InvoiceController {
     @Autowired
     private InvoicePdfService invoicePdfService;
 
-    // Preview invoice
+   
     @GetMapping("/preview/{userId}")
     public ResponseEntity<InvoicePreviewResponseDTO> previewInvoice(
             @PathVariable Integer userId) {
         return ResponseEntity.ok(invoiceService.previewInvoice(userId));
     }
 
-    // Generate invoice
+    
     @PostMapping("/generate/{userId}")
     public InvoiceResponseDTO generateInvoice(@PathVariable Integer userId) {
         return invoiceService.generateInvoice(userId);
     }
 
-    // Get invoices by customer
+    
     @GetMapping("/customer/{userId}")
     public List<Invoice> getInvoicesByCustomer(@PathVariable Integer userId) {
         return invoiceService.getInvoicesByCustomer(userId);
     }
 
-    // Get invoice by id
+    
     @GetMapping("/id/{invoiceId}")
     public Invoice getInvoiceById(@PathVariable Integer invoiceId) {
         return invoiceService.getInvoiceById(invoiceId);
     }
 
-    // Download invoice PDF
+    
     @GetMapping("/download/{invoiceId}")
     public ResponseEntity<byte[]> downloadInvoice(
             @PathVariable Integer invoiceId) {
