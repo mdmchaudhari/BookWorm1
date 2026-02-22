@@ -49,13 +49,13 @@ public class InvoicePdfServiceImpl implements InvoicePdfService {
                         // Define Colors
                         DeviceRgb themeColor = new DeviceRgb(51, 102, 204); // Navy Blue
 
-                        // ======================
+                        
                         // HEADER SECTION
-                        // ======================
+                       
                         Table headerTable = new Table(new float[] { 1, 1 });
                         headerTable.setWidth(UnitValue.createPercentValue(100));
 
-                        // Left: Company Info
+                        
                         Cell companyCell = new Cell().setBorder(Border.NO_BORDER);
 
                         try {
@@ -63,10 +63,10 @@ public class InvoicePdfServiceImpl implements InvoicePdfService {
                                 byte[] bytes = is.readAllBytes();
                                 ImageData data = ImageDataFactory.create(bytes);
                                 Image img = new Image(data);
-                                img.setWidth(150); // Increased width for better visibility
+                                img.setWidth(150); 
                                 companyCell.add(img);
                         } catch (Exception e) {
-                                // Fallback to text if image fails to load
+                                
                                 companyCell.add(new Paragraph("BookWorm")
                                                 .setFontSize(26)
                                                 .setBold()
@@ -99,12 +99,9 @@ public class InvoicePdfServiceImpl implements InvoicePdfService {
                         headerTable.addCell(invoiceInfoCell);
                         document.add(headerTable);
 
-                        document.add(new Paragraph("\n")); // Spacer
-
-                        // ======================
+                        
                         // CUSTOMER SECTION
-                        // ======================
-                        // Fetch Customer Details
+                        
                         Optional<Customer> customerOpt = customerRepository.findById(invoice.getUserId());
                         String customerName = "Guest";
                         String customerEmail = "-";
@@ -130,24 +127,23 @@ public class InvoicePdfServiceImpl implements InvoicePdfService {
                         billToCell.add(new Paragraph(customerEmail).setFontSize(10));
                         billToCell.add(new Paragraph(customerPhone).setFontSize(10));
 
-                        // Empty right cell or Ship To (keeping empty for now for digital goods)
+                       
                         Cell rightParams = new Cell().setBorder(Border.NO_BORDER);
 
                         customerTable.addCell(billToCell);
                         customerTable.addCell(rightParams);
                         document.add(customerTable);
 
-                        document.add(new Paragraph("\n")); // Spacer
+                        document.add(new Paragraph("\n")); 
 
-                        // ======================
+                       
                         // ITEMS TABLE
-                        // ======================
-                        // Columns: #, Description, Type, Qty, Unit Price, Total
+                        
                         float[] columnWidths = { 1, 5, 2, 1, 2, 2 };
                         Table itemTable = new Table(columnWidths);
                         itemTable.setWidth(UnitValue.createPercentValue(100));
 
-                        // Headers
+                        
                         String[] headers = { "#", "Description", "Type", "Qty", "Unit Price", "Total" };
                         for (String header : headers) {
                                 itemTable.addHeaderCell(new Cell()
@@ -157,15 +153,15 @@ public class InvoicePdfServiceImpl implements InvoicePdfService {
                                                 .setTextAlignment(TextAlignment.CENTER));
                         }
 
-                        // Rows
+                        
                         int count = 1;
                         for (InvoiceDetail d : details) {
-                                // Item Number
+                               
                                 itemTable.addCell(
                                                 new Cell().add(new Paragraph(String.valueOf(count++)))
                                                                 .setTextAlignment(TextAlignment.CENTER));
 
-                                // Description (Product Name + Author/Language)
+                                
                                 String productName = d.getProductName();
                                 if (productName == null || productName.trim().isEmpty()) {
                                         if (d.getProduct() != null)
@@ -173,14 +169,14 @@ public class InvoicePdfServiceImpl implements InvoicePdfService {
                                 }
 
                                 String desc = productName;
-                                // Try to add author or language if available (Optional enhancement)
+                                
                                 if (d.getProduct() != null && d.getProduct().getLanguage() != null) {
                                         desc += " (" + d.getProduct().getLanguage().getLanguageDesc() + ")";
                                 }
 
                                 itemTable.addCell(new Cell().add(new Paragraph(desc)));
 
-                                // Type
+                                
                                 char type = d.getTranType();
                                 String typeStr = "Purchase";
                                 if (type == 'R')
@@ -192,28 +188,20 @@ public class InvoicePdfServiceImpl implements InvoicePdfService {
                                                 new Cell().add(new Paragraph(typeStr))
                                                                 .setTextAlignment(TextAlignment.CENTER).setFontSize(9));
 
-                                // Qty
+                               
                                 itemTable.addCell(new Cell().add(new Paragraph(String.valueOf(d.getQuantity())))
                                                 .setTextAlignment(TextAlignment.CENTER));
 
-                                // Unit Price
+                                
                                 String unitPrice = d.getSalePrice() != null ? "₹ " + d.getSalePrice() : "-";
-                                // For Library Plan, price might be hidden or 0 in invoice details sometimes,
-                                // but handled here
+                              
                                 if (d.getSalePrice() == null && d.getBasePrice() != null)
                                         unitPrice = "₹ " + d.getBasePrice();
 
                                 itemTable.addCell(new Cell().add(new Paragraph(unitPrice))
                                                 .setTextAlignment(TextAlignment.RIGHT));
 
-                                // Total (Qty * SalePrice)
-                                // Assuming SalePrice is per unit. If not pre-calculated, we do it here.
-                                // However, InvoiceDetail doesn't always strictly store row total, so we'll just
-                                // show SalePrice for now as 'Total' implies line total.
-                                // Ideally: Logic should use basePrice * qty if salePrice is unit price.
-                                // Let's assume SalePrice is Unit Price for now and calculation was done
-                                // elsewhere or just show Sale Price.
-                                // Refined: usually SalePrice in DB is Unit Sale Price.
+                                
 
                                 String rowTotal = "-";
                                 if (d.getSalePrice() != null) {
@@ -230,14 +218,14 @@ public class InvoicePdfServiceImpl implements InvoicePdfService {
 
                         document.add(itemTable);
 
-                        // ======================
+                        
                         // TOTALS SECTION
-                        // ======================
-                        Table totalTable = new Table(new float[] { 4, 1 }); // Wide spacer, Total block
+                        
+                        Table totalTable = new Table(new float[] { 4, 1 }); 
                         totalTable.setWidth(UnitValue.createPercentValue(100));
                         totalTable.setMarginTop(20);
 
-                        // Left side (Thank you note)
+                        
                         Cell noteCell = new Cell().setBorder(Border.NO_BORDER);
                         noteCell.add(new Paragraph("Thank you for your business!")
                                         .setItalic()
@@ -246,7 +234,7 @@ public class InvoicePdfServiceImpl implements InvoicePdfService {
                                         .setFontSize(8)
                                         .setFontColor(ColorConstants.GRAY));
 
-                        // Right side (Calculations)
+                        
                         Cell summaryCell = new Cell().setBorder(Border.NO_BORDER);
                         summaryCell.add(new Paragraph("Grand Total")
                                         .setBold()
@@ -266,7 +254,7 @@ public class InvoicePdfServiceImpl implements InvoicePdfService {
 
                 } catch (Exception e) {
                         e.printStackTrace();
-                        return null; // Or throw custom exception
+                        return null; 
                 }
 
                 return outputStream.toByteArray();
